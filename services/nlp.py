@@ -2,11 +2,20 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from collections import Counter
 from datetime import datetime
 import re
-from transformers import pipeline
-from openai import OpenAI
 import os
+from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) # keep your actual key
+# -----------------------------
+# SAFE IMPORT HANDLING
+# -----------------------------
+# Heavy transformer models cannot load on Render free tier.
+# So we try importing pipeline safely.
+try:
+    from transformers import pipeline
+except ImportError:
+    pipeline = None  # prevents crashes on Render
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 analyzer = SentimentIntensityAnalyzer()
 
@@ -17,7 +26,7 @@ LOCAL_EMOTION_MODEL = "./emotion-english-distilroberta-base"
 
 emotion_analyzer = None
 
-if os.path.exists(LOCAL_EMOTION_MODEL):
+if pipeline is not None and os.path.exists(LOCAL_EMOTION_MODEL):
     try:
         emotion_analyzer = pipeline(
             "text-classification",
@@ -28,12 +37,16 @@ if os.path.exists(LOCAL_EMOTION_MODEL):
     except Exception as e:
         print("❌ Failed to load local emotion model:", e)
 else:
-    print("⚠ Emotion model folder not found. Emotion detection disabled.")
+    print("⚠ Emotion model unavailable or folder missing. Using fallback.")
 
 
+# -------------------------------------------------------
+# EMOTION DETECTION (graceful fallback for Render)
+# -------------------------------------------------------
 def detect_emotions(messages):
     if not emotion_analyzer:
-        return []  # gracefully handle model missing case
+        # No crash — return empty list if model not available
+        return []
 
     emotions = []
     for msg in messages:
@@ -50,6 +63,9 @@ def detect_emotions(messages):
     return emotions
 
 
+# -------------------------------------------------------
+# BASIC SENTIMENT
+# -------------------------------------------------------
 def analyze_sentiment(text: str) -> str:
     score = analyzer.polarity_scores(text)["compound"]
     if score >= 0.05:
@@ -59,30 +75,37 @@ def analyze_sentiment(text: str) -> str:
     return "neutral"
 
 
+# -------------------------------------------------------
+# KEYWORD EXTRACTION
+# -------------------------------------------------------
 def keyword_extract(texts):
     words = re.findall(r"\b[a-zA-Z]{4,}\b", " ".join(texts).lower())
-    stopwords = {"this","that","with","from","have","your","there","they","will","about"}
+    stopwords = {"this", "that", "with", "from", "have", "your", "there", "they", "will", "about"}
     words = [w for w in words if w not in stopwords]
     common = Counter(words).most_common(10)
     return [{"keyword": k, "count": v} for k, v in common]
 
 
+# -------------------------------------------------------
+# ADVANCED SUMMARY (OpenAI)
+# -------------------------------------------------------
 def advanced_summary(texts: list[str]) -> str:
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "user", "content": f"Summarize this meeting:\n\n{''.join(texts)}"}
-            ],
+            model="gpt-3.5-turbo",  # use your preferred model
+            messages=[{"role": "user", "content": "Summarize this meeting:\n\n" + ''.join(texts)}],
             temperature=0.3
         )
         content = str(getattr(response.choices[0].message, "content", "")).strip()
         return content or "Summary not generated."
     except Exception as e:
         print(f"⚠️ OpenAI API failed: {e}")
-        return "Summary unavailable due to quota limit. Top points:\n" + "\n".join(texts[:5])
+        return "Summary unavailable. Key points:\n" + "\n".join(texts[:5])
 
 
+# -------------------------------------------------------
+# ACTION ITEMS
+# -------------------------------------------------------
 def extract_action_items(messages):
     pattern = re.compile(
         r"\b(need to|should|let's|will|plan to|decide|assign|do this|send|complete)\b",
