@@ -25,13 +25,17 @@ async def generate_report(chat_id: str, curr_user: dict = Depends(get_current_us
                    f"The most active participant is {analytics_data['top_participant']}."
 
     report_doc = {
-        "chat_id": ObjectId(chat_id),
-        "summary": summary_text,
-        "productivity_score": analytics_data.get("productivity_score", 85),
-        "top_keywords": analytics_data.get("top_keywords", []),
-        "speaker_stats": analytics_data.get("speaker_stats", {}),
-        "created_on": datetime.utcnow()
-    }
+    "chat_id": ObjectId(chat_id),
+    "summary": summary_text,
+    "productivity_score": analytics_data.get("productivity_score", 85),
+    "top_keywords": analytics_data.get("top_keywords", []),
+    "speaker_stats": analytics_data.get("speaker_stats", {}),
+    "sentiment_stats": analytics_data.get("sentiment_stats", []),
+    "emotions": analytics_data.get("emotions", {}),
+    "action_items": analytics_data.get("action_items", []),
+    "created_on": datetime.utcnow()
+}
+
 
     result = db.analysis_reports.insert_one(report_doc)
 
