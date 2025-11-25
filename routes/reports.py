@@ -58,8 +58,6 @@ async def get_report(report_id: str, curr_user: dict = Depends(get_current_user)
 async def download_report(report_id: str, format: str = "pdf", curr_user: dict = Depends(get_current_user)):
     from bson.errors import InvalidId
 
-    report_id = report_id.strip('"').strip("'")
-
     try:
         report_doc = db.analysis_reports.find_one({"_id": ObjectId(report_id)})
     except InvalidId:

@@ -1,5 +1,7 @@
 from fpdf import FPDF
 from io import BytesIO
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import datetime
