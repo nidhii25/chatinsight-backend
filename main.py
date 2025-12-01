@@ -15,11 +15,14 @@ app.openapi_schema = None
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # in production restrict this
-    allow_credentials=True,
+    allow_origins=[
+        "https://chatinsight.vercel.app",
+        "http://localhost:3000",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # --- Register routers ---
 app.include_router(auth.router)
