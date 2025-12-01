@@ -6,7 +6,7 @@ from services.report_gen import generate_pdf, generate_csv
 from datetime import datetime
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
-@router.get("/{chat_id}/generate")
+@router.api_route("/{chat_id}/generate", methods=["GET", "POST"])
 async def generate_report(chat_id: str, curr_user: dict = Depends(get_current_user)):
     chat = db.chats.find_one({"_id": ObjectId(chat_id)})
     if not chat:
