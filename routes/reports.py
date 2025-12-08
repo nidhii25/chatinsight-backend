@@ -2,17 +2,26 @@ from fastapi import APIRouter, HTTPException, Response, Depends
 from database import db
 from utils.auth_utils import get_current_user
 from bson import ObjectId
+from bson.errors import InvalidId
 from services.report_gen import generate_pdf, generate_csv
 from datetime import datetime
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
+
+
 @router.api_route("/{chat_id}/generate", methods=["GET", "POST"])
 async def generate_report(chat_id: str, curr_user: dict = Depends(get_current_user)):
-    chat = db.chats.find_one({"_id": ObjectId(chat_id)})
+    # Validate chat_id format
+    try:
+        chat_obj_id = ObjectId(chat_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid chat ID format")
+
+    chat = db.chats.find_one({"_id": chat_obj_id})
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
 
-    messages = list(db.messages.find({"chat_id": ObjectId(chat_id)}))
+    messages = list(db.messages.find({"chat_id": chat_obj_id}))
     if not messages:
         raise HTTPException(status_code=404, detail="No messages for this chat")
 
@@ -20,12 +29,13 @@ async def generate_report(chat_id: str, curr_user: dict = Depends(get_current_us
     from services.analytics import compute_analytics
     analytics_data = compute_analytics(messages)
 
-    # Summarize
-    summary_text = f"This chat has {analytics_data['message_count']} messages. " \
-                   f"The most active participant is {analytics_data['top_participant']}."
+    summary_text = (
+        f"This chat has {analytics_data['message_count']} messages. "
+        f"The most active participant is {analytics_data['top_participant']}."
+    )
 
     report_doc = {
-        "chat_id": ObjectId(chat_id),
+        "chat_id": chat_obj_id,
         "summary": summary_text,
         "productivity_score": analytics_data.get("productivity_score", 85),
         "top_keywords": analytics_data.get("top_keywords", []),
