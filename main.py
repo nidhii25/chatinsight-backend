@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from routes import auth, chats, analytics, reports, meetings
+from routes import auth, chats, analytics, reports
 
 app = FastAPI(
     title="ChatInsight Backend",
@@ -29,7 +29,7 @@ app.include_router(auth.router)
 app.include_router(chats.router)
 app.include_router(analytics.router)
 app.include_router(reports.router)
-app.include_router(meetings.router)
+
 
 
 @app.get("/")

@@ -1,4 +1,4 @@
-from services.nlp import analyze_sentiment, keyword_extract, advanced_summary, extract_action_items, detect_emotions
+from services.nlp import analyze_sentiment, keyword_extract, advanced_summary, extract_action_items
 from datetime import datetime
 from bson import ObjectId
 from utils.auth_utils import get_current_user
@@ -49,9 +49,6 @@ async def get_chat_analytics(chat_id: str, curr_user: dict = Depends(get_current
     top_keywords = keyword_extract(all_texts)
     summary = advanced_summary(all_texts)
     action_items = extract_action_items(messages)
-    emotions = detect_emotions(messages)
-    emotion_counts = {k: v for k, v in Counter([e["emotion"] for e in emotions]).items()}
-
     # Save Report
     report_doc = {
         "chat_id": ObjectId(chat_id),
@@ -61,7 +58,6 @@ async def get_chat_analytics(chat_id: str, curr_user: dict = Depends(get_current
         "top_keywords": top_keywords,
         "speaker_stats": {p["_id"]: p["count"] for p in participant_stats},
         "sentiment_stats": sentiment_map,
-        "emotions": emotion_counts,
         "productivity_score": productivity_score,
         "created_on": datetime.utcnow()
     }
@@ -71,7 +67,6 @@ async def get_chat_analytics(chat_id: str, curr_user: dict = Depends(get_current
     return {
         "participants": participant_stats,
         "sentiments": sentiment_stats,
-        "emotions": emotion_counts,
         "action_items": action_items,
         "keywords": top_keywords,
         "summary": summary,

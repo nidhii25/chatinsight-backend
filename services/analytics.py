@@ -5,7 +5,6 @@ from datetime import datetime
 
 # Import advanced NLP functions
 from services.nlp import (
-    detect_emotions,
     extract_action_items,
     advanced_summary,
     keyword_extract
@@ -42,10 +41,7 @@ def compute_analytics(messages: List[Dict]) -> Dict:
             sentiments["neutral"] += 1
             sentiment_labels.append("neutral")
 
-    # --- 3️⃣ Emotion Detection (AI-powered) ---
-    emotion_results = detect_emotions(messages)
-    emotion_stats = dict(Counter([e["emotion"] for e in emotion_results]))
-
+   
     # --- 4️⃣ Keyword Extraction (smart version) ---
     all_texts = [m.get("text", "") for m in messages if m.get("text", "").strip()]
     top_keywords = keyword_extract(all_texts)
@@ -70,7 +66,6 @@ def compute_analytics(messages: List[Dict]) -> Dict:
         "speaker_stats": speaker_stats,
         "top_participant": top_participant,
         "sentiment_stats": sentiments,
-        "emotion_stats": emotion_stats,
         "top_keywords": top_keywords,
         "action_items": action_items,
         "summary": summary,

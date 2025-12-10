@@ -1,9 +1,8 @@
 import re
 from datetime import datetime
 
-# Matches lines like: "11/03/25, 09:13 - Nidhi Agrawal: Hi"
 WHATSAPP_REGEX = re.compile(
-    r"^(\d{1,2}/\d{1,2}/\d{2,4}),\s*(\d{1,2}:\d{2})\s*-\s*([^:]+):\s*(.*)$"
+    r"^(\d{1,2}/\d{1,2}/\d{2,4}),\s*(\d{1,2}:\d{2}(?:\s?[APMapm]{2})?)\s*-\s*(.*)$"
 )
 
 def parse_whatsapp_chat(lines):
@@ -13,33 +12,44 @@ def parse_whatsapp_chat(lines):
     for line in lines:
         line = line.strip()
 
-        # Match a new message
         match = WHATSAPP_REGEX.match(line)
         if match:
-            # Save previous message if any
+            date_str, time_str, rest = match.groups()
+
+            # System messages (no sender)
+            if ":" in rest:
+                sender, text = rest.split(":", 1)
+                sender = sender.strip()
+                text = text.strip()
+            else:
+                sender = "System"
+                text = rest.strip()
+
+            # Convert timestamp safely
+            timestamp = None
+            for fmt in ["%d/%m/%y %I:%M %p", "%d/%m/%Y %I:%M %p", "%d/%m/%y %H:%M", "%d/%m/%Y %H:%M"]:
+                try:
+                    timestamp = datetime.strptime(f"{date_str} {time_str}", fmt)
+                    break
+                except:
+                    pass
+
+            # Save previous multi-line message
             if current_message:
                 messages.append(current_message)
 
-            date_str, time_str, sender, text = match.groups()
-            try:
-                # Try parsing 2-digit year first, fallback to 4-digit
-                try:
-                    timestamp = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%y %H:%M")
-                except ValueError:
-                    timestamp = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%Y %H:%M")
-            except ValueError:
-                timestamp = None
-
             current_message = {
                 "timestamp": timestamp,
-                "sender": sender.strip(),
-                "text": text.strip()
+                "sender": sender,
+                "text": text
             }
-        elif current_message:
-            # Continuation of previous message (multi-line)
-            current_message["text"] += " " + line.strip()
 
-    # Append the last message
+        else:
+            # Line doesn’t start with date → continuation of previous message
+            if current_message:
+                current_message["text"] += " " + line
+
+    # last message
     if current_message:
         messages.append(current_message)
 
